@@ -1,0 +1,58 @@
+[project]
+name = "crypto-market-pipeline"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Glady T Davianus",email = "gladytdavianus@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "requests (>=2.34.2,<3.0.0)",
+    "pyspark (>=4.1.2,<5.0.0)",
+    "psycopg2-binary (>=2.9.12,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.1.1,<10.0.0)",
+    "black (>=26.5.1,<27.0.0)",
+    "isort (>=8.0.1,<9.0.0)",
+    "ruff (>=0.15.20,<0.16.0)",
+    "mypy (>=2.1.0,<3.0.0)",
+    "pre-commit (>=4.6.0,<5.0.0)"
+]
+
+[tool.black]
+line-lenght = 88
+target-version = ["py312"]
+extend-exclude = '''
+/(
+  postgres/postgres_data
+  | \.git
+  | venv
+  | \.venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_lenght = 88
+
+[tool.ruff]
+line-lenght = 88
+target-version = "py312"
+extend-exclude = ["postgres/postgres_data", "venv",".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore= ["E501"]
+
+[tool.mypy]
+pyyhon_version = "3.12"
+ignore_missing_imports = true
