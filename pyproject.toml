@@ -29,7 +29,7 @@ dev = [
 ]
 
 [tool.black]
-line-lenght = 88
+line-length = 88
 target-version = ["py312"]
 extend-exclude = '''
 /(
@@ -42,10 +42,10 @@ extend-exclude = '''
 
 [tool.isort]
 profile = "black"
-line_lenght = 88
+line_length = 88
 
 [tool.ruff]
-line-lenght = 88
+line-length = 88
 target-version = "py312"
 extend-exclude = ["postgres/postgres_data", "venv",".venv"]
 
