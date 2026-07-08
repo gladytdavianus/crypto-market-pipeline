@@ -2,7 +2,7 @@ import json
 import os
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp
+from pyspark.sql.functions import col, current_date, current_timestamp
 from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
 from src.utils.logger import setup_logger
@@ -49,12 +49,16 @@ def transform_market_data(raw_json_path: str, processed_dir: str = PROCESSED_DIR
 
     raw_df = spark.read.option("multiline", "true").json(raw_json_path)
 
-    fact_df = raw_df.select(
-        col("id").alias("coin_id"),
-        col("current_price").cast("double").alias("price_usd"),
-        col("market_cap").cast("double").alias("market_cap_usd"),
-        col("total_volume").cast("double").alias("volume_24h_usd"),
-    ).withColumn("processed_at", current_timestamp())
+    fact_df = (
+        raw_df.select(
+            col("id").alias("coin_id"),
+            col("current_price").cast("double").alias("price_usd"),
+            col("market_cap").cast("double").alias("market_cap_usd"),
+            col("total_volume").cast("double").alias("volume_24h_usd"),
+        )
+        .withColumn("price_date", current_date())
+        .withColumn("processed_at", current_timestamp())
+    )
 
     row_count = fact_df.count()
     logger.info(f"Total market data rows: {row_count}")
