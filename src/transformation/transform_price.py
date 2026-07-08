@@ -5,6 +5,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, current_date, current_timestamp
 from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
+from src.quality.quality_data import validate_fact_coin_prices
 from src.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -60,6 +61,9 @@ def transform_market_data(raw_json_path: str, processed_dir: str = PROCESSED_DIR
         .withColumn("processed_at", current_timestamp())
     )
 
+    fact_df, quality_report = validate_fact_coin_prices(fact_df)
+    logger.info(f"Quality report: {quality_report}")
+
     row_count = fact_df.count()
     logger.info(f"Total market data rows: {row_count}")
 
@@ -113,6 +117,9 @@ def transform_historical_backfill(
         .select("coin_id", "price_date", "price_usd")
         .withColumn("processed_at", current_timestamp())
     )
+
+    fact_df, quality_report = validate_fact_coin_prices(fact_df)
+    logger.info(f"Quality report: {quality_report}")
 
     row_count = fact_df.count()
     logger.info(f"Total historical rows after transform: {row_count}")
