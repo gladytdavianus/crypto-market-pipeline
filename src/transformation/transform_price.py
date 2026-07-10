@@ -80,7 +80,7 @@ def transform_market_data(raw_json_path: str, processed_dir: str = PROCESSED_DIR
 
     logger.info(f"Market snapshot saved to: {output_dir}")
     spark.stop()
-    return output_dir
+    return {"output_dir": output_dir, "quality_report": quality_report}
 
 
 def transform_historical_backfill(
@@ -133,7 +133,7 @@ def transform_historical_backfill(
 
     logger.info(f"Historical backfill saved to: {output_dir}")
     spark.stop()
-    return output_dir
+    return {"output_dir": output_dir, "quality_report": quality_report}
 
 
 def main():
@@ -149,10 +149,10 @@ def transform_daily():
     dim_coins_dir = transform_coins_list(
         "data/raw/coins_list.json", output_subdir="dim_coins_daily"
     )
-    transform_market_data("data/raw/coingecko_raw.json")
+    market_result = transform_market_data("data/raw/coingecko_raw.json")
     return {
         "dim_coins_dir": dim_coins_dir,
-        "market_snapshot_dir": "data/processed/fact_market_snapshot",
+        "market_snapshot": market_result,
     }
 
 
@@ -161,10 +161,12 @@ def transform_backfill():
     dim_coins_dir = transform_coins_list(
         "data/raw/coins_list.json", output_subdir="dim_coins_backfill"
     )
-    transform_historical_backfill("data/raw/historical_backfill.json")
+    historical_result = transform_historical_backfill(
+        "data/raw/historical_backfill.json"
+    )
     return {
         "dim_coins_dir": dim_coins_dir,
-        "historical_dir": "data/processed/fact_historical_backfill",
+        "historical": historical_result,
     }
 
 

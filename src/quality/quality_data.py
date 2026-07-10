@@ -1,8 +1,10 @@
 from datetime import datetime
 
+import psycopg2
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import col
 
+from src.utils.config import DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER
 from src.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -83,3 +85,35 @@ def validate_fact_coin_prices(df: DataFrame) -> tuple[DataFrame, dict]:
         logger.warning(f"[Quality] FAIL - Score: {quality_score}% below threshold!")
 
     return df, quality_report
+
+
+def log_pipeline_run(
+    stage: str,
+    status: str,
+    rows_processed: int | None = None,
+    error_message: str | None = None,
+):
+    """Write one row to pipeline_run_log for monitoring purposes."""
+    conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD
+    )
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO pipeline_run_log (stage, status, rows_processed, error_message)
+            VALUES (%s, %s, %s, %s);
+            """,
+            (stage, status, rows_processed, error_message),
+        )
+        conn.commit()
+        logger.info(
+            f"[Monitoring] Logged: stage={stage}, status={status}, rows={rows_processed}"
+        )
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"[Monitoring] Failed to log pipeline run: {e}")
+    finally:
+        cur.close()
+        conn.close()
