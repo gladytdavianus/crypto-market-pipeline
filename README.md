@@ -1,6 +1,6 @@
 # crypto-market-pipeline
 
-A production-style, end-to-end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, loads results into PostgreSQL using an idempotent staging + upsert pattern, and is orchestrated by two independent Apache Airflow DAGs all fully containerized with Docker.
+A production style, end to end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, loads results into PostgreSQL using an idempotent staging, upsert pattern and is orchestrated by two independent Apache Airflow DAGs all fully containerized with Docker.
 
 ![Pipeline Architecture Diagram](docs/architecture-diagram.svg)
 
@@ -13,6 +13,7 @@ A production-style, end-to-end data pipeline that extracts daily and historical 
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
+- [Design Trade-offs](#design-trade-offs)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Running the Pipeline](#running-the-pipeline)
@@ -44,11 +45,11 @@ Each pipeline run performs:
 
 - Two independent Airflow DAGs: a daily incremental load (`@daily`) and a manually triggered historical backfill each loads its own `dim_coins` dependency, so either can run safely on a fresh database
 - Three layer PySpark data quality gate (null / dedup / range) with a quantified quality score, applied *before* loading not after
-- Idempotent loading via staging tables + `ON CONFLICT DO UPDATE`, safe to re-run or retry without creating duplicates
+- Idempotent loading via staging tables  `ON CONFLICT DO UPDATE`, safe to re-run or retry without creating duplicates
 - Two fully isolated PostgreSQL instances application data and Airflow metadata never share a database
 - SQL monitoring views for price anomaly detection, missing-date detection, and pipeline health
-- Fully containerized with Docker Compose Airflow image built with Poetry + Java 17 for PySpark compatibility
-- CI (lint + type check) and CD (Docker image build & publish) via GitHub Actions
+- Fully containerized with Docker Compose Airflow image built with Poetry and Java 17 for PySpark compatibility
+- CI (lint & type check) and CD (Docker image build & publish) via GitHub Actions
 
 ---
 
@@ -154,6 +155,18 @@ crypto-market-pipeline/
 
 ---
 
+## Design Trade-offs
+
+This project intentionally uses tooling that is heavier than the data volume strictly requires, as a deliberate learning choice rather than a production optimized decision:
+
+- **PySpark for sub million row data.** CoinGecko market data at this scale (a curated set of coins, daily granularity, a few years of history) comfortably fits in memory and could be processed with pandas or plain SQL. PySpark was chosen here specifically to build hands on experience with distributed DataFrame APIs, partitioning, and JDBC based loading skills that matter once data volume grows beyond a single machine, even though this dataset doesn't yet require it.
+- **Self-hosted PostgreSQL over a managed warehouse.** Running Postgres in Docker meant handling schema migrations, upserts, and monitoring views by hand useful for understanding what managed warehouses abstract away.
+- **ETL (transform-before-load) over ELT.** Quality checks and transformation happen in PySpark *before* data reaches PostgreSQL, rather than loading raw data and transforming in-warehouse with SQL/dbt. This mirrors how a resource constrained or on prem environment might be forced to work.
+
+A follow up project, [`crypto-market-elt`](https://github.com/gladytdavianus/crypto-market-elt), revisits the same CoinGecko data with the opposite philosophy ELT with BigQuery & dbt as a deliberate comparison of when each approach is the right call.
+
+---
+
 ## Installation
 
 ### Prerequisites
@@ -241,7 +254,7 @@ Change the default list (or pass `coin_ids` explicitly) to backfill different co
 ### Trigger manually via CLI
 
 ```bash
-# One-time historical backfill (run this first on a fresh database)
+# One time historical backfill (run this first on a fresh database)
 docker exec -it crypto-market-pipeline-airflow-scheduler-1 \
   airflow dags trigger crypto_backfill_pipeline
 
