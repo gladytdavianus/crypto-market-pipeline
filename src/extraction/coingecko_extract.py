@@ -67,5 +67,41 @@ def main():
     return coin_list, market_data, historical_data
 
 
+def extract_dim_coins():
+    """Reusable: fetch coin list (metadata) - used by both daily and backfill."""
+    coin_list = fetch_data(endpoint="/coins/list")
+    save_raw_json(coin_list, "data/raw/coins_list.json")
+    return "data/raw/coins_list.json"
+
+
+def extract_daily():
+    """For daily DAG: coin list + today's price snapshot."""
+    coin_list_path = extract_dim_coins()
+
+    market_data = fetch_data(endpoint="/coins/markets", params={"vs_currency": "usd"})
+    save_raw_json(market_data, RAW_JSON_FILE)
+
+    return {
+        "coin_list_path": coin_list_path,
+        "market_data_path": RAW_JSON_FILE,
+    }
+
+
+def extract_backfill(coin_ids: list[str] | None = None, days: int = 365):
+    """For backfill DAG: coin list (safety) + historical prices."""
+    coin_list_path = extract_dim_coins()
+
+    if coin_ids is None:
+        coin_ids = ["bitcoin", "ethereum", "solana"]
+
+    historical_data = backfill_historical_data(coin_ids=coin_ids, days=days)
+    save_raw_json(historical_data, "data/raw/historical_backfill.json")
+
+    return {
+        "coin_list_path": coin_list_path,
+        "historical_path": "data/raw/historical_backfill.json",
+    }
+
+
 if __name__ == "__main__":
     main()

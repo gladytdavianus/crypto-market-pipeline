@@ -17,7 +17,11 @@ def get_spark():
     return SparkSession.builder.appName("CryptoTransform").getOrCreate()
 
 
-def transform_coins_list(raw_json_path: str, processed_dir: str = PROCESSED_DIR):
+def transform_coins_list(
+    raw_json_path: str,
+    processed_dir: str = PROCESSED_DIR,
+    output_subdir: str = "dim_coins",
+):
     logger.info(f"Reading raw coins list from: {raw_json_path}")
     spark = get_spark()
 
@@ -36,7 +40,7 @@ def transform_coins_list(raw_json_path: str, processed_dir: str = PROCESSED_DIR)
         spark.stop()
         raise ValueError(f"No data found in {raw_json_path}")
 
-    output_dir = os.path.join(processed_dir, "dim_coins")
+    output_dir = os.path.join(processed_dir, output_subdir)
     dim_coins_df.write.mode("overwrite").option("header", True).csv(output_dir)
 
     logger.info(f"dim_coins saved to: {output_dir}")
@@ -138,6 +142,30 @@ def main():
     transform_market_data("data/raw/coingecko_raw.json")
     transform_historical_backfill("data/raw/historical_backfill.json")
     logger.info("=== Transformation Done ===")
+
+
+def transform_daily():
+    """For daily DAG."""
+    dim_coins_dir = transform_coins_list(
+        "data/raw/coins_list.json", output_subdir="dim_coins_daily"
+    )
+    transform_market_data("data/raw/coingecko_raw.json")
+    return {
+        "dim_coins_dir": dim_coins_dir,
+        "market_snapshot_dir": "data/processed/fact_market_snapshot",
+    }
+
+
+def transform_backfill():
+    """For backfill DAG."""
+    dim_coins_dir = transform_coins_list(
+        "data/raw/coins_list.json", output_subdir="dim_coins_backfill"
+    )
+    transform_historical_backfill("data/raw/historical_backfill.json")
+    return {
+        "dim_coins_dir": dim_coins_dir,
+        "historical_dir": "data/processed/fact_historical_backfill",
+    }
 
 
 if __name__ == "__main__":

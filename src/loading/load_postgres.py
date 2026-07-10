@@ -105,5 +105,16 @@ def main():
         spark.stop()
 
 
+def load_daily(spark):
+    load_dim_coins(spark, input_path="data/processed/dim_coins_daily")
+    load_fact_market_snapshot(spark)
+
+
+def load_backfill(spark):
+    """For backfill DAG: dim_coins first (FK dependency), then historical."""
+    load_dim_coins(spark, input_path="data/processed/dim_coins_backfill")
+    load_fact_historical_backfill(spark)
+
+
 if __name__ == "__main__":
     main()
