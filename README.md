@@ -1,5 +1,6 @@
 # crypto-market-pipeline
 
+
 A production style, end to end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, loads results into PostgreSQL using an idempotent staging, upsert pattern and is orchestrated by two independent Apache Airflow DAGs all fully containerized with Docker.
 
 ![Pipeline Architecture Diagram](docs/architecture-diagram.svg)
@@ -155,13 +156,13 @@ crypto-market-pipeline/
 
 ---
 
-## Design Trade-offs
+## Design Trade offs
 
 This project intentionally uses tooling that is heavier than the data volume strictly requires, as a deliberate learning choice rather than a production optimized decision:
 
 - **PySpark for sub million row data.** CoinGecko market data at this scale (a curated set of coins, daily granularity, a few years of history) comfortably fits in memory and could be processed with pandas or plain SQL. PySpark was chosen here specifically to build hands on experience with distributed DataFrame APIs, partitioning, and JDBC based loading skills that matter once data volume grows beyond a single machine, even though this dataset doesn't yet require it.
-- **Self-hosted PostgreSQL over a managed warehouse.** Running Postgres in Docker meant handling schema migrations, upserts, and monitoring views by hand useful for understanding what managed warehouses abstract away.
-- **ETL (transform-before-load) over ELT.** Quality checks and transformation happen in PySpark *before* data reaches PostgreSQL, rather than loading raw data and transforming in-warehouse with SQL/dbt. This mirrors how a resource constrained or on prem environment might be forced to work.
+- **Self hosted PostgreSQL over a managed warehouse.** Running Postgres in Docker meant handling schema migrations, upserts, and monitoring views by hand useful for understanding what managed warehouses abstract away.
+- **ETL (transform before load) over ELT.** Quality checks and transformation happen in PySpark *before* data reaches PostgreSQL, rather than loading raw data and transforming in-warehouse with SQL/dbt. This mirrors how a resource constrained or on prem environment might be forced to work.
 
 A follow up project, [`crypto-market-elt`](https://github.com/gladytdavianus/crypto-market-elt), revisits the same CoinGecko data with the opposite philosophy ELT with BigQuery & dbt as a deliberate comparison of when each approach is the right call.
 
