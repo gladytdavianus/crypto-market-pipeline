@@ -1,0 +1,24 @@
+name: Lint & Type Check
+
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+      - name: Install dependencies
+        run: poetry install --with dev
+      - name: Run Black
+        run: poetry run black --check .
+      - name: Run isort
+        run: poetry run isort --check-only .
+      - name: Run Ruff
+        run: poetry run ruff check .
+      - name: Run mypy
+        run: poetry run mypy src/
