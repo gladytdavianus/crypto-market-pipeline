@@ -1,6 +1,6 @@
 # crypto-market-pipeline
 
-A production style, end to end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, loads results into PostgreSQL using an idempotent staging + upsert pattern, and is orchestrated by two independent Apache Airflow DAGs all fully containerized with Docker.
+A production style, end to end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, loads results into PostgreSQL using an idempotent staging upsert pattern, and is orchestrated by two independent Apache Airflow DAGs all fully containerized with Docker.
 
 ![Pipeline Architecture Diagram](docs/architecture-diagram.svg)
 
