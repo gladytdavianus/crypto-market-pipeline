@@ -1,7 +1,7 @@
 # crypto-market-pipeline
 
 
-A production style, end to end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, loads results into PostgreSQL using an idempotent staging, upsert pattern and is orchestrated by two independent Apache Airflow DAGs all fully containerized with Docker.
+A production-style, end-to-end data pipeline that extracts daily and historical cryptocurrency market data from the CoinGecko API, transforms and validates it with PySpark, and loads it into PostgreSQL using an idempotent staging/upsert pattern. Orchestrated by two independent Apache Airflow DAGs, fully containerized with Docker.
 
 ![Pipeline Architecture Diagram](docs/architecture-diagram.svg)
 
@@ -44,12 +44,12 @@ Each pipeline run performs:
 
 ## Features
 
-- Two independent Airflow DAGs: a daily incremental load (`@daily`) and a manually triggered historical backfill each loads its own `dim_coins` dependency, so either can run safely on a fresh database
-- Three layer PySpark data quality gate (null / dedup / range) with a quantified quality score, applied *before* loading not after
-- Idempotent loading via staging tables  `ON CONFLICT DO UPDATE`, safe to re-run or retry without creating duplicates
-- Two fully isolated PostgreSQL instances application data and Airflow metadata never share a database
-- SQL monitoring views for price anomaly detection, missing-date detection, and pipeline health
-- Fully containerized with Docker Compose Airflow image built with Poetry and Java 17 for PySpark compatibility
+- Two independent Airflow DAGs: a daily incremental load (`@daily`) and a manually triggered historical backfill. Each loads its own `dim_coins` dependency, so either can run safely on a fresh database.
+- Three-layer PySpark data quality gate (null, dedup, range) with a quantified quality score, applied before loading, not after.
+- Idempotent loading via staging tables and `ON CONFLICT DO UPDATE`. Safe to re-run or retry without creating duplicates.
+- Two fully isolated PostgreSQL instances. Application data and Airflow metadata never share a database.
+- SQL monitoring views for price anomaly detection, missing-date detection, and pipeline health.
+- Fully containerized with Docker Compose. The Airflow image is built with Poetry and Java 17 for PySpark compatibility.
 - CI (lint & type check) and CD (Docker image build & publish) via GitHub Actions
 
 ---
@@ -156,15 +156,15 @@ crypto-market-pipeline/
 
 ---
 
-## Design Trade offs
+## Design Trade-offs
 
-This project intentionally uses tooling that is heavier than the data volume strictly requires, as a deliberate learning choice rather than a production optimized decision:
+This project intentionally uses tooling heavier than the data volume strictly requires. That's a deliberate learning choice, not a production-optimized one:
 
-- **PySpark for sub million row data.** CoinGecko market data at this scale (a curated set of coins, daily granularity, a few years of history) comfortably fits in memory and could be processed with pandas or plain SQL. PySpark was chosen here specifically to build hands on experience with distributed DataFrame APIs, partitioning, and JDBC based loading skills that matter once data volume grows beyond a single machine, even though this dataset doesn't yet require it.
-- **Self hosted PostgreSQL over a managed warehouse.** Running Postgres in Docker meant handling schema migrations, upserts, and monitoring views by hand useful for understanding what managed warehouses abstract away.
-- **ETL (transform before load) over ELT.** Quality checks and transformation happen in PySpark *before* data reaches PostgreSQL, rather than loading raw data and transforming in-warehouse with SQL/dbt. This mirrors how a resource constrained or on prem environment might be forced to work.
+- **PySpark for sub-million-row data.** CoinGecko market data at this scale (a curated set of coins, daily granularity, a few years of history) fits comfortably in memory and could run through pandas or plain SQL. PySpark builds hands-on experience with distributed DataFrame APIs, partitioning, and JDBC-based loading. Those skills matter once data volume grows beyond a single machine, even though this dataset doesn't need them yet.
+- **Self-hosted PostgreSQL over a managed warehouse.** Running Postgres in Docker means handling schema migrations, upserts, and monitoring views by hand, which shows what managed warehouses abstract away.
+- **ETL (transform before load) over ELT.** Quality checks and transformation happen in PySpark before data reaches PostgreSQL, rather than loading raw data and transforming in-warehouse with SQL/dbt. This mirrors how a resource-constrained or on-prem environment might be forced to work.
 
-A follow up project, [`crypto-market-elt`](https://github.com/gladytdavianus/crypto-market-elt), revisits the same CoinGecko data with the opposite philosophy ELT with BigQuery & dbt as a deliberate comparison of when each approach is the right call.
+A follow-up project, [`crypto-market-elt`](https://github.com/gladytdavianus/crypto-market-elt), revisits the same CoinGecko data with the opposite philosophy: ELT with BigQuery and dbt. It's a deliberate comparison of when each approach is the right call.
 
 ---
 
@@ -175,7 +175,7 @@ A follow up project, [`crypto-market-elt`](https://github.com/gladytdavianus/cry
 | Requirement | Minimum Version | Notes |
 |---|---|---|
 | Docker | 24.0+ | Engine + CLI |
-| Docker Compose | 2.20+ (tested on 2.40.2) | `docker-compose-plugin` package on Linux no Docker Desktop required |
+| Docker Compose | 2.20+ (tested on 2.40.2) | `docker-compose-plugin` package on Linux; no Docker Desktop required |
 | Git | any | For cloning the repo |
 | Poetry | 1.8+ | Optional, only needed for local development outside containers |
 
@@ -203,7 +203,7 @@ Edit `.env` and fill in your own values: `DB_PASSWORD`, `COINGECKO_API_KEY` (fre
 docker compose up -d --build
 ```
 
-The first build installs Java 17 and all Poetry dependencies inside the Airflow image this takes a few minutes. Subsequent starts are fast.
+The first build installs Java 17 and all Poetry dependencies inside the Airflow image, which takes a few minutes. Subsequent starts are fast.
 
 **4. Verify all containers are healthy**
 
@@ -266,7 +266,7 @@ docker exec -it crypto-market-pipeline-airflow-scheduler-1 \
 
 ### Monitor via Airflow UI
 
-Open `http://localhost:8080` (login: `admin` / `admin`). Both DAGs start **paused**  unpause them from the UI before triggering or waiting for the schedule.
+Open `http://localhost:8080` (login: `admin` / `admin`). Both DAGs start **paused**; unpause them from the UI before triggering or waiting for the schedule.
 
 ![Airflow DAG Success](docs/screenshots/airflow-dag-success.png)
 
@@ -274,7 +274,7 @@ Open `http://localhost:8080` (login: `admin` / `admin`). Both DAGs start **pause
 
 ## Monitoring
 
-Pipeline health is tracked in PostgreSQL rather than a separate dashboard tool every stage of every run writes one row to `pipeline_run_log`.
+Pipeline health is tracked in PostgreSQL rather than a separate dashboard tool. Every stage of every run writes one row to `pipeline_run_log`.
 
 ```sql
 -- Overall health summary per stage
@@ -318,7 +318,7 @@ SELECT * FROM v_missing_dates ORDER BY expected_date DESC LIMIT 20;
 
 `UNIQUE (coin_id, price_date)` keeps the daily snapshot and historical backfill consistent in the same table without duplicates.
 
-**`pipeline_run_log`**  one row per pipeline stage per run
+**`pipeline_run_log`** — one row per pipeline stage per run
 
 | Column | Type | Description |
 |---|---|---|
@@ -346,7 +346,7 @@ This project uses two separate GitHub Actions workflows:
 | **CI** | `.github/workflows/lint.yml` | Every push / PR | Runs `black`, `isort`, `ruff`, and `mypy` against the codebase |
 | **CD** | `.github/workflows/cd.yml` | After CI succeeds on `main` | Builds the Docker image and publishes it to GitHub Container Registry (GHCR) |
 
-Because this pipeline requires long-running containers (Airflow scheduler, PostgreSQL) rather than a stateless web service, "deployment" here means **publishing a versioned, ready to run Docker image** not deploying to an always on server. Anyone can pull and run the exact tested image with:
+This pipeline runs long-running containers (Airflow scheduler, PostgreSQL) rather than a stateless web service, so "deployment" here means **publishing a versioned, ready-to-run Docker image**, not deploying to an always-on server. Anyone can pull and run the exact tested image with:
 
 ```bash
 docker pull ghcr.io/gladytdavianus/crypto-market-pipeline:latest
@@ -422,7 +422,7 @@ mkdir -p dags data logs && chmod -R 777 dags data logs
 
 **Cause:** Renaming a service or its associated volume in `docker-compose.yml` causes Docker to treat it as a brand new volume silently resetting all previously loaded data.
 
-**Solution:** This is exactly why the loading layer uses staging + upsert rather than plain insert: re-running the backfill DAG safely restores the data with no manual intervention needed.
+**Solution:** The loading layer uses staging plus upsert instead of plain insert for this reason. Re-running the backfill DAG restores the data with no manual intervention.
 
 ---
 
@@ -434,20 +434,20 @@ This project is licensed under the MIT License see the [LICENSE](LICENSE) file f
 
 ## Author
 
-> Built and maintained by **Glady T. Davianus** Instrument & Control Engineer transitioning into Data Engineering.
+**Glady T. Davianus** — Instrument & Control Engineer transitioning into Data Engineering.
 
 GitHub: [https://github.com/gladytdavianus](https://github.com/gladytdavianus)
 
-> Contributions and pull requests are welcome.
+Issues and pull requests are open.
 
 ---
 
-## Acknowledgments
+## Built With
 
-- [CoinGecko API](https://docs.coingecko.com/) — for free access to cryptocurrency market data
-- [Apache Airflow](https://airflow.apache.org/) — for workflow orchestration
-- [Apache Spark](https://spark.apache.org/) — for distributed data processing
-- [PostgreSQL](https://www.postgresql.org/) — for the relational database
+- [CoinGecko API](https://docs.coingecko.com/) for market data
+- [Apache Airflow](https://airflow.apache.org/) for orchestration
+- [Apache Spark](https://spark.apache.org/) for distributed processing
+- [PostgreSQL](https://www.postgresql.org/) for storage
 
 ---
 
