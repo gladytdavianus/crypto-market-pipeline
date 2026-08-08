@@ -43,6 +43,45 @@ def backfill_historical_data(coin_ids: list[str], days: int = 365):
     return all_historical_data
 
 
+def fetch_coin_description(coin_id: str):
+    """Fetch full coin detail from CoinGecko, description-relevant fields only.
+
+    Other fields (market_data, tickers, community_data, developer_data) are
+    excluded via params - they belong to fact_coin_prices / other sources,
+    not this extraction.
+    """
+    endpoint = f"/coins/{coin_id}"
+    params = {
+        "localization": "false",
+        "tickers": "false",
+        "market_data": "false",
+        "community_data": "false",
+        "developer_data": "false",
+    }
+    return fetch_data(endpoint=endpoint, params=params)
+
+
+def backfill_coin_descriptions(coin_ids: list[str]):
+    """Fetch English description text for each coin_id, one call per coin.
+
+    Mirrors backfill_historical_data: same try/except-and-continue pattern,
+    so one failed coin doesn't abort the whole batch.
+    """
+    all_descriptions = {}
+
+    for coin_id in coin_ids:
+        try:
+            data = fetch_coin_description(coin_id)
+            description = data.get("description", {}).get("en", "").strip()
+            all_descriptions[coin_id] = description
+            logger.info(f"Success: {coin_id}")
+        except requests.RequestException as e:
+            logger.error(f"Failed:{coin_id} - {e}")
+            continue
+
+    return all_descriptions
+
+
 def save_raw_json(data, output_path=RAW_JSON_FILE):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -101,6 +140,21 @@ def extract_backfill(coin_ids: list[str] | None = None, days: int = 365):
         "coin_list_path": coin_list_path,
         "historical_path": "data/raw/historical_backfill.json",
     }
+
+
+def extract_coin_descriptions(coin_ids: list[str] | None = None):
+    """Standalone extraction: coin descriptions for embedding in crypto-market-rag.
+
+    Not part of the daily/backfill DAGs (descriptions rarely change, no need
+    to re-fetch on schedule). Run manually / on demand instead.
+    """
+    if coin_ids is None:
+        coin_ids = ["bitcoin", "ethereum", "solana"]
+
+    descriptions = backfill_coin_descriptions(coin_ids=coin_ids)
+    save_raw_json(descriptions, "data/raw/coin_descriptions.json")
+
+    return "data/raw/coin_descriptions.json"
 
 
 if __name__ == "__main__":
