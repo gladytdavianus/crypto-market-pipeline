@@ -15,11 +15,38 @@ x-airflow-common: &airflow-common
     DB_PASSWORD: ${DB_PASSWORD}
     COINGECKO_BASE_URL: ${COINGECKO_BASE_URL}
     COINGECKO_API_KEY: ${COINGECKO_API_KEY}
+    # --- crypto-market-rag config (rag_src/utils/config.py) -----------------
+    # Different env var names from DB_* above (POSTGRES_* vs DB_*), so no
+    # collision even though both point at the same postgres_crypto container.
+    # rag_user (not DB_USER/crypto_user) - least-privilege role from
+    # vector_schema.sql, read-only on dim_coins/fact_coin_prices.
+    POSTGRES_HOST: postgres_crypto
+    POSTGRES_PORT: 5432
+    POSTGRES_DB: ${DB_NAME}
+    POSTGRES_USER: ${RAG_DB_USER}
+    POSTGRES_PASSWORD: ${RAG_DB_PASSWORD}
+    # Ollama runs on the HOST (laptop), not in a container - host.docker.internal
+    # is how a container reaches services running on its host machine.
+    OLLAMA_HOST: http://host.docker.internal:11434
+    OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+    OLLAMA_CHAT_MODEL: llama3.1:8b
+    LOG_LEVEL: INFO
+    ENVIRONMENT: production
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src
     - ./data:/opt/airflow/data
     - ./logs:/opt/airflow/logs
+    # --- crypto-market-rag mounts --------------------------------------------
+    # Sibling project directory, assumed at ../crypto-market-rag relative to
+    # this docker-compose.yml. Adjust the path if your folder layout differs.
+    - ../crypto-market-rag/dags:/opt/airflow/dags/rag
+    - ../crypto-market-rag/rag_src:/opt/airflow/rag_src
+  # Required on Linux Docker Engine for host.docker.internal to resolve
+  # (on Docker Desktop for Mac/Windows this is automatic, but explicit here
+  # doesn't hurt and keeps this file portable).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     postgres_airflow:
@@ -27,7 +54,7 @@ x-airflow-common: &airflow-common
 
 services:
   postgres_crypto:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: crypto_postgres
     restart: unless-stopped
     environment:

@@ -16,4 +16,21 @@ WORKDIR /opt/airflow
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root --only main
 
+# --- crypto-market-rag dependencies ---------------------------------------
+# Installed via plain pip (not poetry), since this Dockerfile's poetry
+# install above is scoped to THIS project's pyproject.toml/poetry.lock only.
+# Versions here match crypto-market-rag/pyproject.toml.
+RUN pip install --no-cache-dir \
+    "psycopg[binary]>=3.1,<4.0" \
+    "pgvector>=0.2,<0.3" \
+    "ollama>=0.2,<0.3" \
+    "feedparser>=6.0,<7.0" \
+    "requests>=2.32,<3.0" \
+    "beautifulsoup4>=4.12,<5.0" \
+    "tiktoken>=0.7,<0.8" \
+    "pydantic-settings>=2.2,<3.0" \
+    "structlog>=24.1,<25.0" \
+    "typer>=0.12,<0.13" \
+    "rich>=13.7,<14.0"
+
 COPY --chown=airflow:root . /opt/airflow/
